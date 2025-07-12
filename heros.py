@@ -57,45 +57,153 @@ OVERWATCH_HEROES = {
 
 # OCR misread corrections (only fixes for misreads, not valid heroes)
 HERO_CORRECTIONS: dict[str, str] = {
-    # Wrecking Ball variations
-    'WRECKING BRL': 'Wrecking Ball',
-    'WRECKING BALI': 'Wrecking Ball',
-    'WRECKINGBALL': 'Wrecking Ball',
-
-    # Ramattra variations
-    'RAMATIRA': 'Ramattra',
-    'ARAMATIRA': 'Ramattra',
-
-    # Doomfist variations
-    'DOOMEST': 'Doomfist',
-
-    # D.Va Variations
+    # Ana
+    'ANNA': 'Ana',
+    
+    # Ashe
+    'ASHEE': 'Ashe',
+    'ASH': 'Ashe',
+    
+    # Baptiste
+    'BAPTIST': 'Baptiste',
+    
+    # Bastion (no common misreads)
+    
+    # Brigitte
+    'BRIGITE': 'Brigitte',
+    
+    # Cassidy
+    'CASSID': 'Cassidy',
+    'CASSADY': 'Cassidy',
+    
+    # D.Va
+    'D.VA': 'D.Va',
     'DVA': 'D.Va',
-    'OVA': 'D.Va',
     'LVA': 'D.Va',
+    'OVA': 'D.Va',
+    
+    # Doomfist
+    'DOOMEST': 'Doomfist',
+    
+    # Echo 
+    'ECHD': 'Echo',
+    
+    # Freja (no common misreads)
+    
+    # Genji
+    'GENJU': 'Genji',
+    'GENJ': 'Genji',
+    
+    # Hanzo
+    'HANZA': 'Hanzo',
+    'HANDZO': 'Hanzo',
+    
+    # Hazard
+    'HAZARO': 'Hazard',
 
-    # Mauga variations
-    'MAUGR': 'Mauga',
-
-    # Soldier: 76 variations
-    'SOLDIER 76': 'Soldier: 76',
-    'SOLDIER76': 'Soldier: 76',
-    'SOLDIER': 'Soldier: 76',
-
-    # Zarya variations
-    'ZARYG': 'Zarya',
-
-    #Juno variations
+    # Illari
+    'ILLAR': 'Illari',
+    
+    # Junker Queen
+    'JUNKERQUEEN': 'Junker Queen',
+    
+    # Junkrat
+    'JUNKRATT': 'Junkrat',
+    
+    # Juno
     'JUNG': 'Juno',
     'JUNG ': 'Juno',
     'JUNO': 'Juno',
-
-    # Widowmaker variations
+    
+    # Kiriko
+    'KIRIKKO': 'Kiriko',
+    
+    # Lifeweaver
+    'LIFEWEAVER': 'Lifeweaver',
+    'LIFE WEAVER': 'Lifeweaver',
+    'LIFEWEVER': 'Lifeweaver',
+    
+    # Lúcio
+    'LUCIO': 'Lúcio',
+    
+    # Mauga
+    'MAUGR': 'Mauga',
+    
+    # Mei (no common misreads)
+    
+    # Mercy
+    'MERECY': 'Mercy',
+    
+    # Moira
+    'MOIRHA': 'Moira',
+    'MORIA': 'Moira',
+    
+    # Orisa
+    'DRISA': 'Orisa',
+    
+    # Pharah
+    'PHARA': 'Pharah',
+    'FARAH': 'Pharah',
+    
+    # Ramattra
+    'ARAMATIRA': 'Ramattra',
+    'RAMATIRA': 'Ramattra',
+    
+    # Reaper
+    'REAPAR': 'Reaper',
+    
+    # Reinhardt
+    'REINHARD': 'Reinhardt',
+    
+    # Roadhog
+    'RDADHOG': 'Roadhog',
+    'ROADHDG': 'Roadhog',
+    'RDADHDG': 'Roadhog',
+    
+    # Sigma
+    'SIGMAA': 'Sigma',
+    
+    # Sojourn
+    'SOJOUR': 'Sojourn',
+    
+    # Soldier: 76
+    'SOLDIER': 'Soldier: 76',
+    'SOLDIER 76': 'Soldier: 76',
+    'SOLDIER76': 'Soldier: 76',
+    
+    # Sombra
+    'SOMBRI': 'Sombra',
+    
+    # Symmetra
+    'SYMETRA': 'Symmetra',
+    
+    # Torbjörn
+    'TORBJORN': 'Torbjörn',
+    
+    # Tracer
+    'TRACAR': 'Tracer',
+    
+    # Venture
+    'VENTUR': 'Venture',
+    
+    # Widowmaker
     'WIDOW': 'Widowmaker',
     'WIDOW MAKER': 'Widowmaker',
-
-    # Mercy variations
-    'MERECY': 'Mercy'
+    
+    # Winston (no common misreads)
+    
+    # Wrecking Ball
+    'WRECKING BALI': 'Wrecking Ball',
+    'WRECKING BRL': 'Wrecking Ball',
+    'WRECKINGBALL': 'Wrecking Ball',
+    
+    # Zarya
+    'ZARYG': 'Zarya',
+    'ZARIYA': 'Zarya',
+    
+    # Zenyatta
+    'ZENYATT': 'Zenyatta',
+    'ZENYATA': 'Zenyatta',
 }
 
 

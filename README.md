@@ -11,8 +11,8 @@ This tool relies on Tesseract-OCR for reading text from screenshots.
     *   Run the installer. **Note the installation path**, as you will need it later (e.g., `C:\Program Files\Tesseract-OCR`).
 
 2.  **Download the Application**:
-    *   Go to the [**Releases page**](https://github.com/Coldskin-OW/OW2-Hero-Map-Stats/releases)for this project.
-    *   Download the latest `OW Hero Map Stats 1.exe` file from the "Assets" section of the most recent release.
+    *   Go to the [**Releases page**](https://github.com/Coldskin-OW/OW2-Hero-Map-Stats/releases) for this project.
+    *   Download the latest `OW.Hero.Map.Stats.1.exe` file from the "Assets" section of the most recent release.
 
 3.  **Configure the Application**:
     *   Run the downloaded `.exe` file.

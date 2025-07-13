@@ -472,6 +472,7 @@ def print_summary_stats_by_season(seasons: Optional[List[int]] = None, start_dat
         raise ValueError("Invalid time frame - start date must be before end date")
 
     with sqlite3.connect(config.DATABASE_NAME) as conn:
+        conn.row_factory = sqlite3.Row  # Add this line
         cursor = conn.cursor()
         title = "Summary Statistics"
         if seasons:
@@ -492,7 +493,7 @@ def print_summary_stats_by_season(seasons: Optional[List[int]] = None, start_dat
 
     results = {'VICTORY': 0, 'DEFEAT': 0, 'DRAW': 0}
     for row in filtered_rows:
-        results[row[1]] += 1
+        results[row['result']] += 1  # Change from row[1] to row['result']
 
     output.append("\nResults:\n")
     for result, count in sorted(results.items(), key=lambda x: x[1], reverse=True):
@@ -501,7 +502,7 @@ def print_summary_stats_by_season(seasons: Optional[List[int]] = None, start_dat
 
     map_counts = {}
     for row in filtered_rows:
-        map_name = row[2]
+        map_name = row['map']  # Change from row[2] to row['map']
         map_counts[map_name] = map_counts.get(map_name, 0) + 1
 
     output.append("\nTop 5 Maps:\n")
@@ -520,6 +521,7 @@ def print_map_frequency_stats_by_season(seasons: Optional[List[int]] = None, sta
         raise ValueError("Invalid time frame - start date must be before end date")
 
     with sqlite3.connect(config.DATABASE_NAME) as conn:
+        conn.row_factory = sqlite3.Row  # Add this line
         cursor = conn.cursor()
         title = "Map Frequency and Win Percentages"
         if seasons:
@@ -542,8 +544,8 @@ def print_map_frequency_stats_by_season(seasons: Optional[List[int]] = None, sta
     map_stats = {}
 
     for row in filtered_rows:
-        map_name = row[1]
-        result = row[2]
+        map_name = row['map']  # Change from row[1] to row['map']
+        result = row['result']  # Change from row[2] to row['result']
 
         if map_name not in map_stats:
             map_stats[map_name] = {'wins': 0, 'losses': 0, 'draws': 0}
@@ -559,8 +561,7 @@ def print_map_frequency_stats_by_season(seasons: Optional[List[int]] = None, sta
     map_data = []
     for map_name, stats in map_stats.items():
         total_played = stats['wins'] + stats['losses'] + stats['draws']
-        win_percent = (stats['wins'] / (stats['wins'] + stats['losses'])) * 100 if (stats['wins'] + stats[
-            'losses']) > 0 else 0
+        win_percent = (stats['wins'] / (stats['wins'] + stats['losses'])) * 100 if (stats['wins'] + stats['losses']) > 0 else 0
         map_data.append((map_name, total_played, win_percent, stats['wins'], stats['losses'], stats['draws']))
 
     # Sort by most played to least played
@@ -588,6 +589,7 @@ def print_game_mode_stats_by_season(seasons: Optional[List[int]] = None, start_d
         raise ValueError("Invalid time frame - start date must be before end date")
 
     with sqlite3.connect(config.DATABASE_NAME) as conn:
+        conn.row_factory = sqlite3.Row  # Add this line
         cursor = conn.cursor()
         title = "Win Percentage by Game Mode"
         if seasons:
@@ -614,14 +616,14 @@ def print_game_mode_stats_by_season(seasons: Optional[List[int]] = None, start_d
         mode_stats[mode] = {'matches': 0, 'wins': 0, 'losses': 0, 'total_time': 0}
 
     for row in filtered_rows:
-        map_name = row[1]
+        map_name = row['map']  # Change from row[1] to row['map']
         if map_name in MAP_MODES:
             mode = MAP_MODES[map_name]
             mode_stats[mode]['matches'] += 1
-            mode_stats[mode]['total_time'] += row[3]
-            if row[2] == 'VICTORY':
+            mode_stats[mode]['total_time'] += row['length_sec']  # Change from row[3] to row['length_sec']
+            if row['result'] == 'VICTORY':  # Change from row[2] to row['result']
                 mode_stats[mode]['wins'] += 1
-            elif row[2] == 'DEFEAT':
+            elif row['result'] == 'DEFEAT':  # Change from row[2] to row['result']
                 mode_stats[mode]['losses'] += 1
 
     output.append("-" * 90 + "\n")
@@ -631,8 +633,7 @@ def print_game_mode_stats_by_season(seasons: Optional[List[int]] = None, start_d
 
     for mode, stats in sorted(mode_stats.items(), key=lambda x: x[1]['matches'], reverse=True):
         if stats['matches'] > 0:
-            win_rate = (stats['wins'] / (stats['wins'] + stats['losses'])) * 100 if (stats['wins'] + stats[
-                'losses']) > 0 else 0
+            win_rate = (stats['wins'] / (stats['wins'] + stats['losses'])) * 100 if (stats['wins'] + stats['losses']) > 0 else 0
             avg_time = (stats['total_time'] / stats['matches']) / 60
             sample_maps = ", ".join(GAME_MODES[mode][:3])
 

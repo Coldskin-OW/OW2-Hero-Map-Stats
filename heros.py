@@ -67,7 +67,8 @@ HERO_CORRECTIONS: dict[str, str] = {
     # Baptiste
     'BAPTIST': 'Baptiste',
     
-    # Bastion (no common misreads)
+    # Bastion
+    'BAJTION': 'Bastion',
     
     # Brigitte
     'BRIGITE': 'Brigitte',
@@ -88,7 +89,8 @@ HERO_CORRECTIONS: dict[str, str] = {
     # Echo 
     'ECHD': 'Echo',
     
-    # Freja (no common misreads)
+    # Freja
+    'FREIA': 'Freja',
     
     # Genji
     'GENJU': 'Genji',
@@ -103,9 +105,11 @@ HERO_CORRECTIONS: dict[str, str] = {
 
     # Illari
     'ILLAR': 'Illari',
+    'FLLRRI': 'Illari',
     
     # Junker Queen
     'JUNKERQUEEN': 'Junker Queen',
+    'SUNKERQUEEN': 'Junker Queen',
     
     # Junkrat
     'JUNKRATT': 'Junkrat',
@@ -122,14 +126,17 @@ HERO_CORRECTIONS: dict[str, str] = {
     'LIFEWEAVER': 'Lifeweaver',
     'LIFE WEAVER': 'Lifeweaver',
     'LIFEWEVER': 'Lifeweaver',
+    'LIFFWEVER': 'Lifeweaver',
     
     # Lúcio
     'LUCIO': 'Lúcio',
+    'LUE': 'Lúcio',
     
     # Mauga
     'MAUGR': 'Mauga',
     
-    # Mei (no common misreads)
+    # Mei
+    'ME': 'Mei',
     
     # Mercy
     'MERECY': 'Mercy',
@@ -190,7 +197,10 @@ HERO_CORRECTIONS: dict[str, str] = {
     'WIDOW': 'Widowmaker',
     'WIDOW MAKER': 'Widowmaker',
     
-    # Winston (no common misreads)
+    # Winston
+    'WINJTON': 'Winston',
+    'WINITON': 'Winston',
+    'WINSION': 'Winston',
     
     # Wrecking Ball
     'WRECKING BALI': 'Wrecking Ball',

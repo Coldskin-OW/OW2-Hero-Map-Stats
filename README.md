@@ -41,7 +41,7 @@ This tool relies on Tesseract-OCR for reading text from screenshots.
 - Go to `Career Profile -> History -> Game Reports`.
 - For each match you want to add, view the game report and take a screenshot.
 
-In the `OW Hero Map Stats` application:
+In the `OW2 Hero Map Stats` application:
 - Click **"Read Screenshots"**. The application will process the new screenshots in your source folder.
 - After processing is complete, select an **Analysis Type**.
 - Click **"Run Analysis"** to view your stats.

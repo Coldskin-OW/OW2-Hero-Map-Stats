@@ -78,7 +78,7 @@ class OverwatchStatsApp:
     """Main GUI application for Overwatch statistics analysis."""
     def __init__(self, root):
         self.root = root
-        self.root.title("Overwatch Match Statistics Analyzer")
+        self.root.title("Overwatch 2 Hero Map Stats")
         self.root.geometry("1200x800")
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -1481,11 +1481,15 @@ class OverwatchStatsApp:
     def show_about(self):
         """Display the about dialog"""
         about_text = (
-            "Overwatch Match Statistics Analyzer\n"
-            "Version 1.0\n\n"
-            "A tool for analyzing Overwatch match statistics\n"
+            "Overwatch2 Hero Map Stats v1.0\n\n"
+            "An unofficial tool for analyzing Overwatch match statistics "
             "extracted from game screenshots.\n\n"
-            "Created using Python and Tkinter"
+            "------------------------------------\n\n"
+            "Disclaimer:\n"
+            "This project is an independent tool and is not affiliated with, "
+            "endorsed, sponsored, or specifically approved by Blizzard Entertainment, Inc. "
+            "Overwatch is a trademark or registered trademark of Blizzard Entertainment, Inc. "
+            "in the U.S. and/or other countries."
         )
         messagebox.showinfo("About", about_text)
 

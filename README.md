@@ -1,17 +1,18 @@
-# Overwatch2HeroMapStats
+# Overwatch 2 Hero Map Stats
 
-An unoffical tool for extracting and analyzing Overwatch 2 hero/map statistics from screenshots.
+An unofficial tool for extracting and analyzing Overwatch 2 hero/map statistics from screenshots.
 
 ## Previews
-
-### Win Percentage by Hero CHart
-![A chart showing win percentages for a speficic hero for different maps](./images/Preview%20Win%20Percentage%20by%20Hero%20per%20Map%20Chart.png)
 
 ### Win Percentage by Map
 ![Text showing win percentages on different maps](./images/Preview%20Win%20Percentage%20per%20Map.png)
 
 ### Win Percentage by Map Chart
 ![A Chart showing win percentages on different maps](./images/Preview%20Win%20Percentage%20per%20Map%20Chart.png)
+
+### Win Percentage by Hero Chart
+![A chart showing win percentages for a speficic hero for different maps](./images/Preview%20Win%20Percentage%20by%20Hero%20per%20Map%20Chart.png)
+
 
 ## Setup
 
@@ -56,3 +57,7 @@ This tool works by:
 ## Note
 
 The tool only works with game reports from the competitive mode (5v5 Role Queue and 6v6 Open Queue).
+
+## Disclaimer
+
+This project is an independent tool and is not affiliated with, endorsed, sponsored, or specifically approved by Blizzard Entertainment, Inc. Overwatch is a trademark or registered trademark of Blizzard Entertainment, Inc. in the U.S. and/or other countries.

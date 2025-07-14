@@ -2,6 +2,17 @@
 
 An unoffical tool for extracting and analyzing Overwatch 2 hero/map statistics from screenshots.
 
+## Previews
+
+### Win Percentage by Hero CHart
+![A chart showing win percentages for a speficic hero for different maps](./images/Preview%20Win%20Percentage%20by%20Hero%20per%20Map%20Chart.png)
+
+### Win Percentage by Map
+![Text showing win percentages on different maps](./images/Preview%20Win%20Percentage%20per%20Map.png)
+
+### Win Percentage by Map Chart
+![A Chart showing win percentages on different maps](./images/Preview%20Win%20Percentage%20per%20Map%20Chart.png)
+
 ## Setup
 
 This tool relies on Tesseract-OCR for reading text from screenshots.

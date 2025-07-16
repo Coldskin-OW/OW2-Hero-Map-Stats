@@ -472,7 +472,7 @@ def print_summary_stats_by_season(seasons: Optional[List[int]] = None, start_dat
         raise ValueError("Invalid time frame - start date must be before end date")
 
     with sqlite3.connect(config.DATABASE_NAME) as conn:
-        conn.row_factory = sqlite3.Row  # Add this line
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         title = "Summary Statistics"
         if seasons:
@@ -521,7 +521,7 @@ def print_map_frequency_stats_by_season(seasons: Optional[List[int]] = None, sta
         raise ValueError("Invalid time frame - start date must be before end date")
 
     with sqlite3.connect(config.DATABASE_NAME) as conn:
-        conn.row_factory = sqlite3.Row  # Add this line
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         title = "Map Frequency and Win Percentages"
         if seasons:
@@ -589,7 +589,7 @@ def print_game_mode_stats_by_season(seasons: Optional[List[int]] = None, start_d
         raise ValueError("Invalid time frame - start date must be before end date")
 
     with sqlite3.connect(config.DATABASE_NAME) as conn:
-        conn.row_factory = sqlite3.Row  # Add this line
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         title = "Win Percentage by Game Mode"
         if seasons:

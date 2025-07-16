@@ -95,6 +95,7 @@ HERO_CORRECTIONS: dict[str, str] = {
     # Genji
     'GENJU': 'Genji',
     'GENJ': 'Genji',
+    'GENSU': 'Genji',
     
     # Hanzo
     'HANZA': 'Hanzo',
@@ -113,8 +114,10 @@ HERO_CORRECTIONS: dict[str, str] = {
     
     # Junkrat
     'JUNKRATT': 'Junkrat',
+    'SUNKRAT': 'Junkrat',
     
     # Juno
+    'SUNG': 'Juno',
     'JUNG': 'Juno',
     'JUNG ': 'Juno',
     'JUNO': 'Juno',
@@ -172,6 +175,7 @@ HERO_CORRECTIONS: dict[str, str] = {
     
     # Sojourn
     'SOJOUR': 'Sojourn',
+    'SOSOURN': 'Sojourn',
     
     # Soldier: 76
     'SOLDIER': 'Soldier: 76',
@@ -186,6 +190,7 @@ HERO_CORRECTIONS: dict[str, str] = {
     
     # Torbjörn
     'TORBJORN': 'Torbjörn',
+    'TORBSORN': 'Torbjörn',
     
     # Tracer
     'TRACAR': 'Tracer',

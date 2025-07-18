@@ -190,11 +190,15 @@ def debug_single_screenshot(file_path: str):
     print(f"Full OCR Text (for general info):\n---\n{full_text.strip()}\n---")
 
     game_datetime = extract_datetime(full_text, config.DATE_INPUT_FORMAT, config.DATE_OUTPUT_FORMAT)
-    game_length_sec = extract_game_length(full_text)
+    game_length_sec, raw_len_text1, raw_len_text2 = extract_game_length(image, full_text)
     game_result = determine_result(full_text)
 
     print(f"\nExtracted Datetime: {game_datetime} {'(VALID)' if game_datetime else '(INVALID)'}")
     print(f"Extracted Length  : {game_length_sec} seconds {'(VALID)' if game_length_sec is not None else '(INVALID)'}")
+    if raw_len_text1 is not None:
+        print(f"Raw Length (Attempt 1 - Full Text): '{raw_len_text1}'")
+    if raw_len_text2 is not None:
+        print(f"Raw Length (Attempt 2 - Region OCR): '{raw_len_text2}'")
     print(f"Extracted Result  : {game_result} {'(VALID)' if game_result else '(INVALID)'}")
 
     print("\n--- 2. Map Name Extraction ---")
@@ -211,6 +215,10 @@ def debug_single_screenshot(file_path: str):
     print(f"  Date           : {game_datetime}")
     print(f"  Result         : {game_result}")
     print(f"  Length (sec)   : {game_length_sec}")
+    if raw_len_text1 is not None:
+        print(f"  Length Raw (Att. 1): '{raw_len_text1}'")
+    if raw_len_text2 is not None:
+        print(f"  Length Raw (Att. 2): '{raw_len_text2}'")
     print(f"  Hero Data      : {hero_data}")
 
     is_fully_valid = all([

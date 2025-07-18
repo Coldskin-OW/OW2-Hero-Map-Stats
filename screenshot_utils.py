@@ -16,6 +16,7 @@ PERCENTAGE_MAX = 102
 REFERENCE_WIDTH = 1920
 REFERENCE_HEIGHT = 1080
 REFERENCE_MAP_REGION = (1296, 177, 1624, 210)
+REFERENCE_GAME_LENGTH_REGION = (1328, 745, 1508, 765)
 
 # Hero regions
 HERO_REGIONS = {
@@ -142,16 +143,42 @@ def calculate_scaled_region(image_width, image_height, original_region):
 
     return (left, top, right, bottom)
 
-def extract_game_length(text):
-    """Extract game length in seconds from OCR text"""
+def extract_game_length(image, text):
+    """
+    Extract game length in seconds from OCR text, with a fallback to a specific image region.
+    Returns a tuple: (length_in_seconds, raw_from_full_text, raw_from_region_ocr).
+    The raw text values will be None if an attempt was not made or failed to find a pattern.
+    """
+    # Attempt 1: Find "GAME LENGTH: M:SS" in the full text
+    raw_match_1 = None
     length_match = re.search(r"GAME LENGTH:\s*(\d+:\d+)", text)
     if length_match:
+        raw_match_1 = length_match.group(1)
         try:
-            mins, secs = map(int, length_match.group(1).split(':'))
-            return mins * 60 + secs
+            mins, secs = map(int, raw_match_1.split(':'))
+            return (mins * 60 + secs, raw_match_1, None)
         except (ValueError, AttributeError):
-            return None
-    return None
+            pass  # Fall through to attempt 2
+
+    # Attempt 2: OCR a specific region for "M:SS"
+    raw_length_text_2 = None
+    try:
+        width, height = image.size
+        game_length_region = calculate_scaled_region(width, height, REFERENCE_GAME_LENGTH_REGION)
+
+        length_img = image.crop(game_length_region).convert('L')
+        length_img = length_img.point(lambda x: 0 if x < 200 else 255)  # Simple threshold for white text
+
+        tesseract_config = '--psm 7 -c tessedit_char_whitelist=0123456789:'
+        raw_length_text_2 = pytesseract.image_to_string(length_img, config=tesseract_config).strip()
+
+        length_match_region = re.search(r"(\d{1,2}):(\d{2})", raw_length_text_2)
+        if length_match_region:
+            mins, secs = map(int, length_match_region.groups())
+            return (mins * 60 + secs, raw_match_1, raw_length_text_2)
+    except Exception as e:
+        logging.warning(f"Could not extract game length from specific region: {e}")
+    return (None, raw_match_1, raw_length_text_2)
 
 def determine_result(text):
     """Determine match result from OCR text"""

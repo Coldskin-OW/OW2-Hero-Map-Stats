@@ -285,7 +285,7 @@ def process_screenshots(progress_callback=None) -> dict:
             image = Image.open(file_path)
             text = pytesseract.image_to_string(image)
 
-            game_length_sec = extract_game_length(text)
+            game_length_sec, _, _ = extract_game_length(image, text)
             game_result = determine_result(text)
             game_datetime = extract_datetime(text, config.DATE_INPUT_FORMAT, config.DATE_OUTPUT_FORMAT)
             game_map = extract_map_name(image, OVERWATCH_MAPS, MAP_CORRECTIONS, config.TESSERACT_CONFIG)

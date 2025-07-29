@@ -19,7 +19,7 @@ import config
 from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.colors import Normalize  # <-- fix: import Normalize from correct module
+from matplotlib.colors import Normalize
 import json
 import os
 from pathlib import Path

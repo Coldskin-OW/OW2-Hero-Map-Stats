@@ -2,7 +2,6 @@
 
 import os
 import sqlite3
-import shutil
 import logging
 from pathlib import Path
 from screenshot_utils import *
@@ -19,166 +18,8 @@ valid_extensions = config.VALID_EXTENSIONS
 # Create extracted folder if it doesn't exist
 os.makedirs(extracted_folder, exist_ok=True)
 
-# Generate a whitelist string of all hero names in uppercase for OCR
-hero_names_upper = '|'.join(
-    [hero.upper() for role in OVERWATCH_HEROES.values() for hero in role] +
-    list(HERO_CORRECTIONS.keys())
-)
-
-# Optimized Tesseract config for hero names
-HERO_CONFIG = f'''
---psm 7 
---oem 3 
--c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZ :.-éüöäñ"
--c preserve_interword_spaces=1
--c textord_force_make_prop_words=1
--c language_model_penalty_non_freq_dict_word=0.5
--c language_model_penalty_non_dict_word=0.3
--c user_words="{hero_names_upper}"
-'''
-
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
-
-def is_valid_hero(text: str) -> bool:
-    """Check if text matches a known hero name, returns False for empty string"""
-    if not text.strip():
-        return False
-    return clean_hero_name(text, HERO_CORRECTIONS, OVERWATCH_HEROES) is not None
-
-def recognize_hero(region, filename, region_name) -> str | None:
-    """Try to recognize hero with primary, secondary, and tertiary settings"""
-    # First attempt with primary settings
-    processed_region = preprocess_hero_region(
-        region,
-        PRIMARY_HERO_SETTINGS['HERO_THRESHOLD'], 
-        PRIMARY_HERO_SETTINGS['HERO_CONTRAST'], 
-        PRIMARY_HERO_SETTINGS['HERO_RESIZE']
-    )
-    attempt1_text = pytesseract.image_to_string(processed_region, config=HERO_CONFIG).strip()
-    hero_name = clean_hero_name(attempt1_text, HERO_CORRECTIONS, OVERWATCH_HEROES)
-    if hero_name is not None:
-        return hero_name
-
-    # Second attempt with alternative settings if first failed
-    processed_region = preprocess_hero_region(
-        region,
-        SECONDARY_HERO_SETTINGS['HERO_THRESHOLD'],
-        SECONDARY_HERO_SETTINGS['HERO_CONTRAST'],
-        SECONDARY_HERO_SETTINGS['HERO_RESIZE']
-    )
-    attempt2_text = pytesseract.image_to_string(processed_region, config=HERO_CONFIG).strip()
-    hero_name = clean_hero_name(attempt2_text, HERO_CORRECTIONS, OVERWATCH_HEROES)
-    if hero_name is not None:
-        return hero_name
-        
-    # Third attempt with tertiary settings if first two failed
-    processed_region = preprocess_hero_region(
-        region,
-        TERTIARY_HERO_SETTINGS['HERO_THRESHOLD'],
-        TERTIARY_HERO_SETTINGS['HERO_CONTRAST'],
-        TERTIARY_HERO_SETTINGS['HERO_RESIZE']
-    )
-    attempt3_text = pytesseract.image_to_string(processed_region, config=HERO_CONFIG).strip()
-    hero_name = clean_hero_name(attempt3_text, HERO_CORRECTIONS, OVERWATCH_HEROES)
-    if hero_name is not None:
-        return hero_name
-
-    logging.debug(f"Could not recognize hero in {region_name}: Attempt1='{attempt1_text}', Attempt2='{attempt2_text}', Attempt3='{attempt3_text}'")
-    return None
-
-def _extract_hero_data_attempt(image, filename, regions, settings):
-    """Helper function to extract hero data with specific settings"""
-    hero_data = []
-    total_percentage = 0
-    num_heroes = 0
-
-    for i in range(0, len(regions), 2):
-        hero_key, hero_coords = regions[i]
-        perc_key, perc_coords = regions[i + 1]
-
-        hero_region = image.crop(calculate_scaled_region(image.width, image.height, hero_coords))
-        hero_name = recognize_hero(hero_region, filename, hero_key)
-
-        # Skip if we couldn't recognize the hero
-        if hero_name is None:
-            continue
-
-        perc_region = image.crop(calculate_scaled_region(image.width, image.height, perc_coords))
-        processed_perc = preprocess_percentage_region(perc_region, settings)
-        perc_text = pytesseract.image_to_string(
-            processed_perc,
-            config='--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789%'
-        ).strip()
-        percentage = extract_percentage(perc_text)
-
-        if percentage > 0:  # Only add if percentage was detected
-            hero_data.append({
-                'hero': hero_name,
-                'percentage': percentage
-            })
-            total_percentage += percentage
-            num_heroes += 1
-
-    return hero_data, total_percentage, num_heroes
-
-def extract_hero_data(image, filename):
-    """Extract hero playtime percentages with validation and retry logic"""
-    width, height = image.size
-    regions = sorted(HERO_REGIONS.items())
-
-    # First attempt with primary settings
-    primary_result = _extract_hero_data_attempt(image, filename, regions, PRIMARY_PERCENTAGE_SETTINGS)
-
-    if primary_result[0] is None:  # Invalid hero text detected
-        logging.warning("Invalid hero text detected in primary attempt")
-        return None
-
-    hero_data, total_percentage, num_heroes = primary_result
-
-    # Check if we need to retry (only if we have some valid heroes)
-    needs_retry = False
-    if num_heroes > 0:
-        if total_percentage > PERCENTAGE_MAX:
-            needs_retry = True
-            logging.info(f"Total percentage {total_percentage}% > {PERCENTAGE_MAX} - retrying with secondary settings")
-        elif num_heroes <= 2 and total_percentage < PERCENTAGE_MIN:
-            needs_retry = True
-            logging.info(f"Total percentage {total_percentage}% < {PERCENTAGE_MIN} for {num_heroes} heroes - retrying with secondary settings")
-
-    # Second attempt if needed
-    if needs_retry and num_heroes > 0:
-        secondary_result = _extract_hero_data_attempt(image, filename, regions, SECONDARY_PERCENTAGE_SETTINGS)
-
-        if secondary_result[0] is None:  # Invalid hero text detected
-            logging.warning("Invalid hero text detected in secondary attempt")
-            return None
-
-        secondary_data, secondary_total, secondary_num_heroes = secondary_result
-
-        # Use whichever result is better
-        if secondary_num_heroes > num_heroes:
-            hero_data = secondary_data
-            total_percentage = secondary_total
-            num_heroes = secondary_num_heroes
-            logging.info(f"Using secondary settings which found {num_heroes} heroes: {total_percentage}%")
-        elif secondary_num_heroes == num_heroes:
-            # If same number of heroes, choose closest to 100%
-            if abs(secondary_total - 100) < abs(total_percentage - 100):
-                hero_data = secondary_data
-                total_percentage = secondary_total
-                logging.info(f"Using secondary settings results (closer to 100): {total_percentage}%")
-
-    # Final validation (only if we have at least one valid hero)
-    if num_heroes > 0:
-        if total_percentage > PERCENTAGE_MAX or (num_heroes <= 2 and total_percentage < PERCENTAGE_MIN):
-            logging.warning(f"Invalid percentages (Total: {total_percentage}%, Heroes: {num_heroes})")
-            return None
-        return hero_data
-
-    # If we got here, no heroes were detected at all
-    logging.warning("No valid heroes detected in screenshot")
-    return None
 
 def init_database():
     """Initialize the SQLite database with proper schema"""
@@ -264,14 +105,12 @@ def process_screenshots(progress_callback=None) -> dict:
     init_database()
     source_folder = Path(config.SOURCE_FOLDER)
     extracted_folder = source_folder / 'extracted'
-
     extracted_folder.mkdir(exist_ok=True)
 
     total_files = 0
     processed_files = 0
     skipped_files = 0
     error_files = 0
-    invalid_percentage_files = 0
 
     # Count total files first
     file_list = [f for f in source_folder.iterdir() if f.suffix.lower() in valid_extensions]
@@ -291,12 +130,12 @@ def process_screenshots(progress_callback=None) -> dict:
             game_map = extract_map_name(image, OVERWATCH_MAPS, MAP_CORRECTIONS, config.TESSERACT_CONFIG)
             hero_data = extract_hero_data(image, file_path.name)
 
-            # Only proceed if all required fields are not None
-            if not (game_length_sec is not None and
-                   game_result is not None and
-                   game_datetime is not None and
-                   game_map is not None and
-                   hero_data is not None):
+            # Only proceed if all required fields are not None and have valid values
+            if (game_length_sec is None or 
+                game_result is None or 
+                game_datetime is None or 
+                game_map is None or 
+                hero_data is None):
                 logging.warning(f"Could not read screenshot: {file_path.name}")
                 error_files += 1
                 if progress_callback:
@@ -312,7 +151,6 @@ def process_screenshots(progress_callback=None) -> dict:
                 logging.info(f"Skipped duplicate: {file_path.name}")
                 skipped_files += 1
 
-            # Update progress after each file
             if progress_callback:
                 progress_callback(i + 1, total_files)
 
@@ -327,15 +165,14 @@ def process_screenshots(progress_callback=None) -> dict:
     logging.info(f"- Successfully processed: {processed_files}")
     logging.info(f"- Skipped duplicates: {skipped_files}")
     logging.info(f"- Failed to read: {error_files}")
-    logging.info(f"- Invalid data: {invalid_percentage_files}")
 
     return {
         'total': total_files,
         'processed': processed_files,
         'skipped': skipped_files,
-        'errors': error_files,
-        'invalid_percentages': invalid_percentage_files
+        'errors': error_files
     }
+
 
 if __name__ == "__main__":
     process_screenshots()

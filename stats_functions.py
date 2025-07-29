@@ -657,20 +657,3 @@ print_summary_stats = lambda seasons=None, start_date=None, end_date=None: print
 print_map_frequency_stats = lambda seasons=None, start_date=None, end_date=None: print_map_frequency_stats_by_season(seasons, start_date, end_date)
 print_game_mode_stats = lambda seasons=None, start_date=None, end_date=None: print_game_mode_stats_by_season(seasons, start_date, end_date)
 print_hero_win_percentages = lambda seasons=None, min_matches=1, start_date=None, end_date=None: print_hero_win_percentages_by_season(seasons, min_matches, start_date, end_date)
-
-def calculate_stats(data: list) -> dict:
-    """
-    Calculate statistics from the provided data.
-
-    Args:
-        data (list): List of data entries.
-
-    Returns:
-        dict: Calculated statistics.
-    """
-    try:
-        # TODO: Implement calculation logic
-        return {}
-    except Exception as e:
-        logging.error(f"Error calculating stats: {e}")
-        return {}

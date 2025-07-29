@@ -7,6 +7,7 @@ from datetime import datetime
 import logging
 from difflib import get_close_matches
 from pathlib import Path
+from heros import OVERWATCH_HEROES, HERO_CORRECTIONS
 
 # --- Constants ---
 PERCENTAGE_MIN = 98
@@ -17,6 +18,24 @@ REFERENCE_WIDTH = 1920
 REFERENCE_HEIGHT = 1080
 REFERENCE_MAP_REGION = (1296, 177, 1624, 210)
 REFERENCE_GAME_LENGTH_REGION = (1328, 745, 1508, 765)
+
+# Generate a whitelist string of all hero names in uppercase for OCR
+hero_names_upper = '|'.join(
+    [hero.upper() for role in OVERWATCH_HEROES.values() for hero in role] +
+    list(HERO_CORRECTIONS.keys())
+)
+
+# Optimized Tesseract config for hero names
+HERO_CONFIG = f'''
+--psm 7 
+--oem 3 
+-c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZ :.-éüöäñ"
+-c preserve_interword_spaces=1
+-c textord_force_make_prop_words=1
+-c language_model_penalty_non_freq_dict_word=0.5
+-c language_model_penalty_non_dict_word=0.3
+-c user_words="{hero_names_upper}"
+'''
 
 # Hero regions
 HERO_REGIONS = {
@@ -224,17 +243,154 @@ def validate_tesseract_installation(tesseract_cmd):
         )
         return False, error_msg
 
-def extract_map_name(image, overwatch_maps, map_corrections, tesseract_config):
-    """Extract map name from predefined screen region"""
+def recognize_hero(region, filename=None, region_name=None, debug=False):
+    """Unified hero recognition with optional debug output"""
+    attempts = [
+        ("Primary", PRIMARY_HERO_SETTINGS),
+        ("Secondary", SECONDARY_HERO_SETTINGS),
+        ("Tertiary", TERTIARY_HERO_SETTINGS)
+    ]
+    
+    results = []
+    for name, settings in attempts:
+        processed = preprocess_hero_region(
+            region,
+            settings['HERO_THRESHOLD'],
+            settings['HERO_CONTRAST'],
+            settings['HERO_RESIZE']
+        )
+        text = pytesseract.image_to_string(processed, config=HERO_CONFIG).strip()
+        hero = clean_hero_name(text, HERO_CORRECTIONS, OVERWATCH_HEROES)
+        
+        if debug:
+            print(f"    - Attempt {name}: Raw='{text}', Cleaned='{hero}'")
+        
+        if hero:
+            return hero
+        results.append((name, text, hero))
+    
+    if debug and filename and region_name:
+        debug_info = ", ".join(f"{n}='{t}'" for n, t, _ in results)
+        print(f"Could not recognize hero in {region_name}: {debug_info}")
+    return None
+
+def extract_hero_data(image, filename=None, debug=False):
+    """Unified hero data extraction with optional debug output"""
+    regions = sorted(HERO_REGIONS.items())
+    
+    def attempt_extraction(settings_name, settings):
+        if debug:
+            print(f"\n  - Attempting hero data extraction with settings: '{settings_name}'")
+        
+        hero_data = []
+        total_percentage = 0
+        
+        for i in range(0, len(regions), 2):
+            hero_key, hero_coords = regions[i]
+            perc_key, perc_coords = regions[i+1]
+
+            hero_region = image.crop(calculate_scaled_region(image.width, image.height, hero_coords))
+            hero_name = recognize_hero(hero_region, filename, hero_key, debug)
+
+            if hero_name is None:
+                if debug:
+                    print(f"    - Hero: '{hero_key}' -> SKIPPED (No valid hero name recognized)")
+                continue
+
+            perc_region = image.crop(calculate_scaled_region(image.width, image.height, perc_coords))
+            processed_perc = preprocess_percentage_region(perc_region, settings)
+            perc_text = pytesseract.image_to_string(
+                processed_perc, 
+                config='--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789%'
+            ).strip()
+            percentage = extract_percentage(perc_text)
+            
+            if debug:
+                print(f"    - Hero: '{hero_name}', Percentage Raw Text: '{perc_text}', Extracted: {percentage}%")
+
+            if percentage > 0:
+                hero_data.append({'hero': hero_name, 'percentage': percentage})
+                total_percentage += percentage
+        
+        num_heroes = len(hero_data)
+        if debug:
+            print(f"  - Result for '{settings_name}': {num_heroes} heroes, {total_percentage}% total")
+        
+        return hero_data, total_percentage, num_heroes
+
+    # Primary attempt
+    primary_data, primary_total, primary_heroes = attempt_extraction("Primary", PRIMARY_PERCENTAGE_SETTINGS)
+    
+    # Check if retry needed
+    needs_retry = False
+    if primary_heroes > 0:
+        if primary_total > PERCENTAGE_MAX or (primary_heroes <= 2 and primary_total < PERCENTAGE_MIN):
+            needs_retry = True
+            if debug:
+                print(f"\n  - Primary result ({primary_total}%) is outside acceptable range. Retrying with secondary settings.")
+
+    # Secondary attempt if needed
+    if needs_retry:
+        secondary_data, secondary_total, secondary_heroes = attempt_extraction("Secondary", SECONDARY_PERCENTAGE_SETTINGS)
+        
+        # Choose better result
+        if secondary_heroes > primary_heroes:
+            final_data, final_total = secondary_data, secondary_total
+            if debug:
+                print(f"\n  - Using secondary results (found more heroes: {secondary_heroes} vs {primary_heroes}).")
+        elif secondary_heroes == primary_heroes and abs(secondary_total - 100) < abs(primary_total - 100):
+            final_data, final_total = secondary_data, secondary_total
+            if debug:
+                print(f"\n  - Using secondary results (closer to 100%: {secondary_total}% vs {primary_total}%).")
+        else:
+            final_data, final_total = primary_data, primary_total
+            if debug:
+                print(f"\n  - Sticking with primary results.")
+    else:
+        final_data, final_total = primary_data, primary_total
+        if debug and primary_heroes == 0:
+            print("\n[!] No heroes found with primary settings. No retry will be attempted.")
+
+    # Final validation
+    if final_data:
+        num_heroes = len(final_data)
+        if final_total > PERCENTAGE_MAX or (num_heroes <= 2 and final_total < PERCENTAGE_MIN):
+            if debug:
+                print(f"[!] Final hero data is invalid (Total: {final_total}%)")
+            return None
+        return final_data
+    
+    return None
+
+def extract_map_name(image, overwatch_maps, map_corrections, tesseract_config, return_raw=False):
+    """Enhanced map extraction with optional raw text return"""
     try:
         width, height = image.size
         map_region = calculate_scaled_region(width, height, REFERENCE_MAP_REGION)
-
         map_img = image.crop(map_region).convert('L')
         map_img = map_img.point(lambda x: 0 if x < 200 else 255)
-
         text = pytesseract.image_to_string(map_img, config=tesseract_config).strip().upper()
 
+        if return_raw:
+            # Always return a tuple when return_raw is True
+            found_map = None
+            for map_name in overwatch_maps:
+                if map_name.upper() == text:
+                    found_map = map_name
+                    break
+
+            if not found_map and text in map_corrections:
+                found_map = map_corrections[text]
+
+            if not found_map:
+                for map_name in overwatch_maps:
+                    if map_name.upper() in text or text in map_name.upper():
+                        found_map = map_name
+                        break
+
+            return (found_map, text)  # Always return a tuple
+
+        # Normal processing when return_raw is False
         for map_name in overwatch_maps:
             if map_name.upper() == text:
                 return map_name
@@ -247,5 +403,8 @@ def extract_map_name(image, overwatch_maps, map_corrections, tesseract_config):
                 return map_name
 
         return None
+
     except Exception:
+        if return_raw:
+            return (None, "Error during extraction")  # Return tuple for error case
         return None

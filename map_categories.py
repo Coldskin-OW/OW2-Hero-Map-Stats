@@ -18,7 +18,8 @@ MAP_CORRECTIONS = {
     'NUMBAN1': 'Numbani',
     'NUMBAN)': 'Numbani',
     'KING ROW': "King's Row",
-    'WATCHPOINT': 'Watchpoint: Gibraltar'
+    'WATCHPOINT': 'Watchpoint: Gibraltar',
+    'ILLOS': 'Ilios'
 }
 
 GAME_MODES = {

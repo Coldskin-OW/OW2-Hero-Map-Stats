@@ -4,6 +4,11 @@ import os
 import sqlite3
 import logging
 from pathlib import Path
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, List, Dict, Any, Callable
+from PIL import Image
+import pytesseract
 from screenshot_utils import *
 from map_categories import OVERWATCH_MAPS, MAP_CORRECTIONS
 import config
@@ -45,7 +50,7 @@ def init_database():
     conn.commit()
     conn.close()
 
-def save_match(date: str, map_name: str, result: str, length_sec: int, hero_data: list[dict]) -> bool:
+def save_match(date: str, map_name: str, result: str, length_sec: int, hero_data: List[Dict[str, Any]]) -> bool:
     """Save match data to database with percentage validation"""
     if not hero_data:
         logging.warning("No hero data to save.")
@@ -76,11 +81,12 @@ def save_match(date: str, map_name: str, result: str, length_sec: int, hero_data
             if c.rowcount > 0:
                 match_id = c.lastrowid
 
-                for hero in hero_data:
-                    c.execute('''INSERT OR IGNORE INTO match_heroes
+                # Batch insert heroes for better performance
+                hero_values = [(match_id, hero['hero'], hero['percentage']) for hero in hero_data]
+                c.executemany('''INSERT OR IGNORE INTO match_heroes
                                  (match_id, hero_name, play_percentage)
                                  VALUES (?,?,?)''',
-                              (match_id, hero['hero'], hero['percentage']))
+                              hero_values)
 
                 conn.commit()
                 return True
@@ -89,17 +95,60 @@ def save_match(date: str, map_name: str, result: str, length_sec: int, hero_data
         logging.error(f"Database error: {e}")
         return False
 
-def process_screenshots(progress_callback=None) -> dict:
-    """Main processing loop with Tesseract validation."""
+def process_single_file(file_path: Path, extracted_folder: Path) -> tuple[bool, str]:
+    """Process a single screenshot file with proper error handling and resource management"""
+    try:
+        with Image.open(file_path) as image:
+            # Extract all required data
+            text = pytesseract.image_to_string(image)
+            
+            game_length_sec, _, _ = extract_game_length(image, text)
+            game_result = determine_result(text)
+            game_datetime = extract_datetime(text, config.DATE_INPUT_FORMAT, config.DATE_OUTPUT_FORMAT)
+            game_map = extract_map_name(image, OVERWATCH_MAPS, MAP_CORRECTIONS, config.TESSERACT_CONFIG)
+            hero_data = extract_hero_data(image, file_path.name)
+
+            # Validate all required fields
+            if (game_length_sec is None or 
+                game_result is None or 
+                game_datetime is None or 
+                game_map is None or 
+                hero_data is None):
+                logging.warning(f"Could not read all data from: {file_path.name}")
+                return False, file_path.name
+
+            # Save to database
+            if save_match(
+                date=game_datetime,  # type: ignore
+                map_name=game_map,  # type: ignore
+                result=game_result,  # type: ignore
+                length_sec=game_length_sec,  # type: ignore
+                hero_data=hero_data  # type: ignore
+            ):
+                dest_path = extracted_folder / file_path.name
+                file_path.rename(dest_path)
+                logging.info(f"Successfully processed: {file_path.name}")
+                return True, file_path.name
+            else:
+                logging.info(f"Skipped duplicate: {file_path.name}")
+                return False, file_path.name
+
+    except Exception as e:
+        logging.error(f"Error processing {file_path.name}: {str(e)}")
+        return False, file_path.name
+
+def process_screenshots(progress_callback: Optional[Callable[[int, int], None]] = None) -> Dict[str, int]:
+    """Main processing loop with parallel execution"""
+    # Validate Tesseract installation
     tesseract_valid, error_msg = validate_tesseract_installation(config.TESSERACT_CMD)
     if not tesseract_valid:
         logging.error(error_msg)
         return {
-            'error': error_msg,
             'total': 0,
             'processed': 0,
             'skipped': 0,
-            'errors': 0
+            'errors': 0,
+            'error': 0  # Adding this to maintain consistency in return type
         }
 
     init_database()
@@ -107,58 +156,49 @@ def process_screenshots(progress_callback=None) -> dict:
     extracted_folder = source_folder / 'extracted'
     extracted_folder.mkdir(exist_ok=True)
 
-    total_files = 0
-    processed_files = 0
-    skipped_files = 0
-    error_files = 0
-
-    # Count total files first
+    # Get list of files to process
     file_list = [f for f in source_folder.iterdir() if f.suffix.lower() in valid_extensions]
     total_files = len(file_list)
 
     if progress_callback:
         progress_callback(0, total_files)
 
-    for i, file_path in enumerate(file_list):
-        try:
-            image = Image.open(file_path)
-            text = pytesseract.image_to_string(image)
+    # Thread-safe counters
+    processed_files = 0
+    error_files = 0
 
-            game_length_sec, _, _ = extract_game_length(image, text)
-            game_result = determine_result(text)
-            game_datetime = extract_datetime(text, config.DATE_INPUT_FORMAT, config.DATE_OUTPUT_FORMAT)
-            game_map = extract_map_name(image, OVERWATCH_MAPS, MAP_CORRECTIONS, config.TESSERACT_CONFIG)
-            hero_data = extract_hero_data(image, file_path.name)
+    # Determine optimal number of workers (leave some CPU headroom)
+    max_workers = min(4, (os.cpu_count() or 1))
+    if max_workers < 1:
+        max_workers = 1
 
-            # Only proceed if all required fields are not None and have valid values
-            if (game_length_sec is None or 
-                game_result is None or 
-                game_datetime is None or 
-                game_map is None or 
-                hero_data is None):
-                logging.warning(f"Could not read screenshot: {file_path.name}")
+    logging.info(f"Starting parallel processing with {max_workers} workers...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks to the executor
+        future_to_file = {
+            executor.submit(process_single_file, file_path, extracted_folder): file_path.name
+            for file_path in file_list
+        }
+
+        # Process completed tasks
+        for i, future in enumerate(as_completed(future_to_file), 1):
+            file_name = future_to_file[future]
+            try:
+                success, _ = future.result()
+                if success:
+                    processed_files += 1
+                else:
+                    error_files += 1
+            except Exception as e:
+                logging.error(f"Unexpected error processing {file_name}: {str(e)}")
                 error_files += 1
-                if progress_callback:
-                    progress_callback(i + 1, total_files)
-                continue
 
-            if save_match(game_datetime, game_map, game_result, game_length_sec, hero_data):
-                dest_path = extracted_folder / file_path.name
-                file_path.rename(dest_path)
-                logging.info(f"Successfully processed: {file_path.name}")
-                processed_files += 1
-            else:
-                logging.info(f"Skipped duplicate: {file_path.name}")
-                skipped_files += 1
-
+            # Update progress after each completed task
             if progress_callback:
-                progress_callback(i + 1, total_files)
+                progress_callback(i, total_files)
 
-        except Exception as e:
-            logging.error(f"Could not read screenshot: {file_path.name} ({e})")
-            error_files += 1
-            if progress_callback:
-                progress_callback(i + 1, total_files)
+    skipped_files = total_files - processed_files - error_files
 
     logging.info(f"\nProcessing complete. Results:")
     logging.info(f"- Total files: {total_files}")
@@ -172,7 +212,6 @@ def process_screenshots(progress_callback=None) -> dict:
         'skipped': skipped_files,
         'errors': error_files
     }
-
 
 if __name__ == "__main__":
     process_screenshots()

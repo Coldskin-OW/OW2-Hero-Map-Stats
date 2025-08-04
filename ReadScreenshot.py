@@ -99,6 +99,7 @@ def process_single_file(file_path: Path, extracted_folder: Path) -> tuple[bool, 
     """Process a single screenshot file with proper error handling and resource management"""
     try:
         with Image.open(file_path) as image:
+            image.load()  # 🔧 Force full load into memory (prevents file lock issues)
             # Extract all required data
             text = pytesseract.image_to_string(image)
             

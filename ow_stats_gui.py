@@ -83,6 +83,10 @@ class OverwatchStatsApp:
         self.style = ttk.Style()
         self.style.theme_use('clam')
 
+        self.canvas = None
+        self.figure_canvas = None
+        self.clipboard_image = None
+
         # Load user settings if they exist
         user_settings = load_user_settings()  # Now calling the standalone function
         if user_settings:
@@ -982,7 +986,7 @@ class OverwatchStatsApp:
             self.chart_frame.destroy()
 
         self.chart_frame = ttk.Frame(self.main_frame)
-        self.chart_frame.grid(row=0, column=2, rowspan=7, sticky="nse", padx=10)  # fix: sticky as string
+        self.chart_frame.grid(row=0, column=2, rowspan=7, sticky="nse", padx=10)
 
         analysis_type = self.analysis_var.get()
 
@@ -999,9 +1003,13 @@ class OverwatchStatsApp:
                 self.current_figure = self.create_map_hero_chart()
 
             if self.current_figure:
-                canvas = FigureCanvasTkAgg(self.current_figure, master=self.chart_frame)
-                canvas.draw()
-                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+                self.figure_canvas = FigureCanvasTkAgg(self.current_figure, master=self.chart_frame)
+                self.figure_canvas.draw()
+                canvas_widget = self.figure_canvas.get_tk_widget()
+                canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+                # Add right-click context menu for copying
+                self.setup_chart_context_menu(canvas_widget)
 
                 # Add close button
                 self.create_chart_close_button(self.chart_frame)
@@ -1014,6 +1022,85 @@ class OverwatchStatsApp:
         except Exception as e:
             messagebox.showerror("Chart Error", f"Failed to create chart: {str(e)}")
             self.hide_chart()
+
+    def setup_chart_context_menu(self, canvas_widget):
+        """Setup right-click context menu for chart copying"""
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Copy as Image", command=lambda: self.copy_chart_to_clipboard(canvas_widget))
+        
+        def show_menu(event):
+            try:
+                menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                menu.grab_release()
+        
+        canvas_widget.bind("<Button-3>", show_menu)  # Right-click binding
+
+    def copy_chart_to_clipboard(self, canvas_widget):
+        """Copy the chart as an image to the clipboard"""
+        try:
+            if not hasattr(self, 'current_figure') or self.current_figure is None:
+                raise ValueError("No chart available to copy")
+            
+            # Create a temporary file to save the image
+            temp_file = "temp_chart.png"
+            self.current_figure.savefig(temp_file, dpi=300, bbox_inches='tight', pad_inches=0.5)
+            
+            # Use platform-specific clipboard handling
+            if os.name == 'nt':  # Windows
+                try:
+                    from PIL import Image
+                    img = Image.open(temp_file)
+                    
+                    try:
+                        # First try with pywin32
+                        import win32clipboard
+                        from io import BytesIO
+                        
+                        output = BytesIO()
+                        img.save(output, format='BMP')
+                        data = output.getvalue()[14:]  # Remove BMP header
+                        output.close()
+                        
+                        win32clipboard.OpenClipboard()
+                        win32clipboard.EmptyClipboard()
+                        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+                        win32clipboard.CloseClipboard()
+                    except ImportError:
+                        # Fallback if pywin32 not available
+                        import subprocess
+                        subprocess.run(['clip'], input=img.tobytes(), check=True)
+                        
+                    img.close()
+                except Exception as e:
+                    messagebox.showwarning("Clipboard Warning", 
+                                         f"Couldn't copy image to clipboard: {str(e)}\n"
+                                         "Image saved to: " + os.path.abspath(temp_file))
+            elif os.name == 'posix':  # Linux/Mac
+                try:
+                    import subprocess
+                    if sys.platform == 'darwin':  # Mac
+                        subprocess.run(['osascript', '-e', 
+                                      f'set the clipboard to (read (POSIX file "{os.path.abspath(temp_file)}") as PNG picture)'], 
+                                     check=True)
+                    else:  # Linux
+                        subprocess.run(['xclip', '-selection', 'clipboard', '-t', 'image/png', '-i', temp_file], 
+                                     check=True)
+                except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                    messagebox.showwarning("Clipboard Warning", 
+                                         f"Couldn't copy image to clipboard: {str(e)}\n"
+                                         "Image saved to: " + os.path.abspath(temp_file))
+            
+            # Delete the temporary file
+            try:
+                os.remove(temp_file)
+            except OSError:
+                pass
+            
+            self.status_var.set("Chart copied to clipboard")
+        except Exception as e:
+            messagebox.showerror("Copy Error", f"Failed to copy chart: {str(e)}")
+            self.status_var.set("Error copying chart")
 
     def hide_chart(self):
         """Hide the chart frame"""
@@ -1086,7 +1173,7 @@ class OverwatchStatsApp:
         # Customize chart
         ax.set_xlim(0, 110)
         ax.set_xlabel('Win Percentage')
-        ax.set_title('Win Percentage by Map (Performance Gradient)')
+        ax.set_title('Win Percentage by Map')
 
         # Add key threshold lines
         thresholds = [33.3, 50, 66.6]

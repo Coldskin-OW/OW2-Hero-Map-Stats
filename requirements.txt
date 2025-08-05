@@ -4,4 +4,4 @@ Pillow
 opencv-python
 matplotlib
 tzlocal
-# ...add any other dependencies as needed...
+pywin32
